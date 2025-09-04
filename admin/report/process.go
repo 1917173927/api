@@ -6,47 +6,51 @@ import (
 	"net/http"
 )
 
-type RegisterRequest struct {
-	Username string `json:"username"`
-	Name     string `json:"name"`
-	Password string `json:"password"`
-	UserType int    `json:"user_type"` // 1: 学生, 2: 管理员
+type ApprovalRequest struct {
+	UserID   int `json:"user_id"`
+	ReportID int `json:"report_id"`
+	Approval int `json:"approval"`
 }
 
 type Response struct {
 	Code int         `json:"code"`
-	Data interface{} `json:"data"`
 	Msg  string      `json:"msg"`
+	Data interface{} `json:"data"`
 }
 
 func main() {
-	http.HandleFunc("/api/user/register", func(w http.ResponseWriter, r *http.Request) {
+	http.HandleFunc("/api/admin/report", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != "POST" {
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 			return
 		}
 
-		var req RegisterRequest
+		// 解析请求参数
+		var req ApprovalRequest
 		err := json.NewDecoder(r.Body).Decode(&req)
 		if err != nil {
 			http.Error(w, "Invalid request body", http.StatusBadRequest)
 			return
 		}
 
-		// 验证必填字段
-		if req.Username == "" || req.Name == "" || req.Password == "" || (req.UserType != 1 && req.UserType != 2) {
-			http.Error(w, "Missing or invalid fields", http.StatusBadRequest)
-			return
+		// 审批逻辑完全由API提交的approval参数控制
+		var msg string
+		var code int
+		if req.Approval == 1 {
+			// 审批通过，后续逻辑由API调用者实现
+			msg = "Accepted"
+			code = 1
+		} else {
+			// 审批拒绝
+			msg = "Rejected"
+			code = 2
 		}
-
-		// 注册逻辑（此处可替换为实际数据库操作）
-		// ...
 
 		// 返回响应
 		resp := Response{
-			Code: 200,
+			Code: code,
+			Msg:  msg,
 			Data: nil,
-			Msg:  "success",
 		}
 
 		w.Header().Set("Content-Type", "application/json")

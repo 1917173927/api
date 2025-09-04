@@ -4,13 +4,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"time"
 )
 
-type RegisterRequest struct {
-	Username string `json:"username"`
-	Name     string `json:"name"`
-	Password string `json:"password"`
-	UserType int    `json:"user_type"` // 1: 学生, 2: 管理员
+type PostRequest struct {
+	Content string `json:"content"`
+	UserID  int    `json:"user_id"`
 }
 
 type Response struct {
@@ -20,13 +19,13 @@ type Response struct {
 }
 
 func main() {
-	http.HandleFunc("/api/user/register", func(w http.ResponseWriter, r *http.Request) {
+	http.HandleFunc("/api/student/post", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != "POST" {
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 			return
 		}
 
-		var req RegisterRequest
+		var req PostRequest
 		err := json.NewDecoder(r.Body).Decode(&req)
 		if err != nil {
 			http.Error(w, "Invalid request body", http.StatusBadRequest)
@@ -34,13 +33,14 @@ func main() {
 		}
 
 		// 验证必填字段
-		if req.Username == "" || req.Name == "" || req.Password == "" || (req.UserType != 1 && req.UserType != 2) {
+		if req.Content == "" || req.UserID == 0 {
 			http.Error(w, "Missing or invalid fields", http.StatusBadRequest)
 			return
 		}
 
-		// 注册逻辑（此处可替换为实际数据库操作）
-		// ...
+		// 记录发帖时间（可替换为实际数据库操作）
+		postTime := time.Now()
+		fmt.Printf("User %d posted at %v\n", req.UserID, postTime)
 
 		// 返回响应
 		resp := Response{

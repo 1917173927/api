@@ -12,9 +12,9 @@ type LoginRequest struct {
 }
 
 type LoginResponse struct {
-	Code int      `json:"code"`
-	Data UserData `json:"data"`
-	Msg  string   `json:"msg"`
+	Code    int         `json:"code"`
+	Data    UserData    `json:"data"`
+	Msg     string      `json:"msg"`
 }
 
 type UserData struct {
@@ -36,11 +36,12 @@ func main() {
 			return
 		}
 
+		// Example logic to differentiate admin and student
 		var userType int
 		if req.Username == "admin" {
-			userType = 2 // Admin
+			userType = 1 // Admin
 		} else {
-			userType = 1 // Student
+			userType = 2 // Student
 		}
 
 		resp := LoginResponse{
