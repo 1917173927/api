@@ -24,6 +24,13 @@ type UserData struct {
 	UserType int `json:"user_type"`
 }
 
+type accounts struct {
+	Username string `gorm:"column:username"`
+	Password string `gorm:"column:password"`
+	UserID   int    `gorm:"column:user_id"`
+	UserType int    `gorm:"column:user_type"`
+}
+
 func main() {
 	// 参考 https://github.com/go-sql-driver/mysql#dsn-data-source-name 获取详情
   dsn := "root:coppklmja!BWZ@tcp(127.0.0.1:3306)/items?charset=utf8mb4&parseTime=True&loc=Local"

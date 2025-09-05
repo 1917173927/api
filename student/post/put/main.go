@@ -19,7 +19,7 @@ type Response struct {
 }
 
 type Post struct {
-	ID      int    `gorm:"primaryKey"`
+	ID      int    `gorm:"primaryKey;column:post_id"`
 	UserID  int    `gorm:"column:user_id"`
 	Content string `gorm:"column:content"`
 }
@@ -48,7 +48,7 @@ func main() {
 
 		// 查询帖子是否存在且用户权限验证
 		var post Post
-		if err := db.Where("id = ?", req.PostID).First(&post).Error; err != nil {
+		if err := db.Where("post_id = ?", req.PostID).First(&post).Error; err != nil {
 			c.JSON(404, Response{Code: 404, Msg: "Post not found"})
 			return
 		}

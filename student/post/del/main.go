@@ -2,7 +2,9 @@ package main
 
 import (
 	"fmt"
+	"strconv"
 	"time"
+
 	"github.com/gin-gonic/gin"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
@@ -57,7 +59,12 @@ func main() {
 		}
 
 		// 验证用户权限
-		if post.UserID != userID {
+		userIDInt, err := strconv.Atoi(userID)
+		if err != nil {
+			c.JSON(400, Response{Code: 400, Msg: "Invalid user_id format"})
+			return
+		}
+		if post.UserID != userIDInt {
 			c.JSON(403, Response{Code: 403, Msg: "Unauthorized to delete this post"})
 			return
 		}
