@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"gorm.io/gorm"
+	"gorm.io/driver/mysql"
 )
 
 type LoginRequest struct {
@@ -23,6 +25,10 @@ type UserData struct {
 }
 
 func main() {
+	// 参考 https://github.com/go-sql-driver/mysql#dsn-data-source-name 获取详情
+  dsn := "root:coppklmja!BWZ@tcp(127.0.0.1:3306)/items?charset=utf8mb4&parseTime=True&loc=Local"
+  db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
+  fmt.Println(db, err)
 	http.HandleFunc("/api/user/login", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != "POST" {
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -36,21 +42,39 @@ func main() {
 			return
 		}
 
-		// Example logic to differentiate admin and student
-		var userType int
-		if req.Username == "admin" {
-			userType = 1 // Admin
-		} else {
-			userType = 2 // Student
+		// 查询数据库中的用户记录
+		var account accounts
+		if err := db.Where("username = ?", req.Username).First(&account).Error; err != nil {
+			resp := LoginResponse{
+				Code: 400,
+				Data: UserData{},
+				Msg:  "Reject: User not found",
+			}
+			w.Header().Set("Content-Type", "application/json")
+			json.NewEncoder(w).Encode(resp)
+			return
 		}
 
+		// 验证密码
+		if account.Password != req.Password {
+			resp := LoginResponse{
+				Code: 400,
+				Data: UserData{},
+				Msg:  "Reject: Invalid password",
+			}
+			w.Header().Set("Content-Type", "application/json")
+			json.NewEncoder(w).Encode(resp)
+			return
+		}
+
+		// 验证通过
 		resp := LoginResponse{
 			Code: 200,
 			Data: UserData{
-				UserID:   1,
-				UserType: userType,
+				UserID:   account.UserID,
+				UserType: account.UserType,
 			},
-			Msg: "success",
+			Msg: "Success",
 		}
 
 		w.Header().Set("Content-Type", "application/json")
