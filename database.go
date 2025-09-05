@@ -7,16 +7,12 @@ import (
 	"github.com/gin-gonic/gin"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
-	"gorm.io/gorm/schema"
+	
 )
 
 func main() {
 	dsn := "root:coppklmja!BWZ@tcp(127.0.0.1:3306)/items?charset=utf8mb4&parseTime=True&loc=Local"
-	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{
-		NamingStrategy: schema.NamingStrategy{
-			SingularTable: true,
-		},
-	})
+	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
 	fmt.Println(err)
 	fmt.Println(db)
 	//设置连接池

@@ -1,65 +1,82 @@
 package main
 
 import (
-	"encoding/json"
+	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
+	"gorm.io/driver/mysql"
+	"time"
 	"fmt"
-	"io/ioutil"
-	"net/http"
 )
 
-type ReportRequest struct {
-	UserID int    `json:"user_id"`
-	PostID int    `json:"post_id"`
-	Reason string `json:"reason"`
-}
-
-type Response struct {
-	Code int         `json:"code"`
-	Data interface{} `json:"data"`
-	Msg  string      `json:"msg"`
+type Reported struct {
+	gorm.Model
+	UserID int    `gorm:"column:user_id" json:"user_id"`
+	PostID int    `gorm:"column:post_id" json:"post_id"`
+	Reason string `gorm:"column:reason" json:"reason"`
 }
 
 func main() {
-	http.HandleFunc("/api/student/report", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != "POST" {
-			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+	r := gin.Default()
+
+	r.POST("/api/student/report-post", func(c *gin.Context) {
+		var data Reported
+
+		if err := c.ShouldBindJSON(&data); err != nil {
+			c.JSON(400, gin.H{
+				"code": 400,
+				"data": nil,
+				"msg":  "绑定数据失败",
+			})
 			return
 		}
-
-		// 读取请求体
-		body, err := ioutil.ReadAll(r.Body)
+		dsn := "root:coppklmja!BWZ@tcp(127.0.0.1:3306)/items?charset=utf8mb4&parseTime=True&loc=Local"
+		db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
+		fmt.Println(err)
+		fmt.Println(db)
+		//设置连接池
+		sqlDB, err := db.DB()
 		if err != nil {
-			http.Error(w, "Invalid request body", http.StatusBadRequest)
+			panic("failed to get database connection")
+		}	
+		// SetMaxIdleConns 设置空闲连接池中连接的最大数量。
+		sqlDB.SetMaxIdleConns(10)
+		// SetMaxOpenConns 设置打开数据库连接的最大数量。
+		sqlDB.SetMaxOpenConns(100)
+		// SetConnMaxLifetime 设置了可以重新使用连接的最大时间。
+		sqlDB.SetConnMaxLifetime(10 * time.Second) //10s
+		if err != nil {
+			c.JSON(500, gin.H{
+				"code": 500,
+				"data": nil,
+				"msg":  "数据库连接失败",
+			})
 			return
 		}
 
-		// 解析请求体
-		var req ReportRequest
-		if err := json.Unmarshal(body, &req); err != nil {
-			http.Error(w, "Invalid JSON format", http.StatusBadRequest)
+		if err := db.AutoMigrate(&Reported{}); err != nil {
+			c.JSON(500, gin.H{
+				"code": 500,
+				"data": nil,
+				"msg":  "数据库迁移失败",
+			})
 			return
 		}
 
-		// 验证必填字段
-		if req.UserID == 0 || req.PostID == 0 || req.Reason == "" {
-			http.Error(w, "Missing required fields", http.StatusBadRequest)
+		if err := db.Create(&data).Error; err != nil {
+			c.JSON(500, gin.H{
+				"code": 500,
+				"data": nil,
+				"msg":  "数据插入失败",
+			})
 			return
 		}
 
-		// 模拟举报逻辑（实际项目中需记录到数据库）
-		fmt.Printf("Report received: User %d reported Post %d for reason: %s\n", req.UserID, req.PostID, req.Reason)
-
-		// 返回响应
-		resp := Response{
-			Code: 200,
-			Data: nil,
-			Msg:  "success",
-		}
-
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(resp)
+		c.JSON(200, gin.H{
+			"code": 200,
+			"data": nil,
+			"msg":  "success",
+		})
 	})
 
-	fmt.Println("Server started at http://localhost:8080")
-	http.ListenAndServe(":8080", nil)
+	r.Run(":8080")
 }
