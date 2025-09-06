@@ -6,6 +6,7 @@ import (
 	"gorm.io/driver/mysql"
 	"time"
 	"fmt"
+	"gorm.io/gorm/logger"
 )
 
 type Reported struct {
@@ -13,15 +14,16 @@ type Reported struct {
 	UserID int    `gorm:"column:user_id" json:"user_id"`
 	PostID int    `gorm:"column:post_id" json:"post_id"`
 	Reason string `gorm:"column:reason" json:"reason"`
+	Status int    `gorm:"column:status;default:0" json:"status"`
 }
 
 func main() {
 	r := gin.Default()
 
 	r.POST("/api/student/report-post", func(c *gin.Context) {
-		var data Reported
+		var report Reported
 
-		if err := c.ShouldBindJSON(&data); err != nil {
+		if err := c.ShouldBindJSON(&report); err != nil {
 			c.JSON(400, gin.H{
 				"code": 400,
 				"data": nil,
@@ -30,7 +32,17 @@ func main() {
 			return
 		}
 		dsn := "root:coppklmja!BWZ@tcp(127.0.0.1:3306)/items?charset=utf8mb4&parseTime=True&loc=Local"
-		db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
+		db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{
+			Logger: logger.Default.LogMode(logger.Info),
+		})
+		if err != nil {
+			c.JSON(500, gin.H{
+				"code": 500,
+				"data": nil,
+				"msg":  "数据库连接失败",
+			})
+			return
+		}
 		fmt.Println(err)
 		fmt.Println(db)
 		//设置连接池
@@ -44,36 +56,34 @@ func main() {
 		sqlDB.SetMaxOpenConns(100)
 		// SetConnMaxLifetime 设置了可以重新使用连接的最大时间。
 		sqlDB.SetConnMaxLifetime(10 * time.Second) //10s
-		if err != nil {
-			c.JSON(500, gin.H{
-				"code": 500,
-				"data": nil,
-				"msg":  "数据库连接失败",
-			})
-			return
+
+		rep := Reported{
+			UserID: report.UserID,
+			PostID: report.PostID,
+			Reason: report.Reason,
 		}
 
 		if err := db.AutoMigrate(&Reported{}); err != nil {
 			c.JSON(500, gin.H{
 				"code": 500,
 				"data": nil,
-				"msg":  "数据库迁移失败",
+				"msg":  "数据库迁移失败: " + err.Error(),
 			})
 			return
 		}
 
-		if err := db.Create(&data).Error; err != nil {
+		if err := db.Create(&rep).Error; err != nil {
 			c.JSON(500, gin.H{
 				"code": 500,
 				"data": nil,
-				"msg":  "数据插入失败",
+				"msg":  "数据插入失败: " + err.Error(),
 			})
 			return
 		}
 
 		c.JSON(200, gin.H{
 			"code": 200,
-			"data": nil,
+			"data": rep,
 			"msg":  "success",
 		})
 	})

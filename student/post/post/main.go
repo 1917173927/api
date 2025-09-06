@@ -65,7 +65,6 @@ func main() {
 			return
 		}
 
-		// 数据库操作
 		post := Post{
 			Content: req.Content,
 			UserID:  req.UserID,

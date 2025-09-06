@@ -1,10 +1,21 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
-	"net/http"
+	"time"
+	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
+	"gorm.io/driver/mysql"
 )
+
+type Reporteds struct {
+	gorm.Model
+	UserID  int    `gorm:"column:user_id" json:"user_id"`
+	PostID  int    `gorm:"column:post_id" json:"post_id"`
+	Content string `gorm:"column:content" json:"content"`
+	Reason  string `gorm:"column:reason" json:"reason"`
+	Status  int    `gorm:"column:status" json:"status"`
+}
 
 type ReportResult struct {
 	PostID  int    `json:"post_id"`
@@ -20,42 +31,65 @@ type Response struct {
 }
 
 func main() {
-	http.HandleFunc("/api/student/report/result", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != "GET" {
-			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-			return
-		}
+	// 初始化数据库连接
+	dsn := "root:coppklmja!BWZ@tcp(127.0.0.1:3306)/items?charset=utf8mb4&parseTime=True&loc=Local"
+	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
+	if err != nil {
+		panic("failed to connect database")
+	}
 
+	// 设置连接池
+	sqlDB, err := db.DB()
+	if err != nil {
+		panic("failed to get database connection")
+	}
+	sqlDB.SetMaxIdleConns(10)
+	sqlDB.SetMaxOpenConns(100)
+	sqlDB.SetConnMaxLifetime(10 * time.Second)
+
+	r := gin.Default()
+	r.GET("/api/student/report-post", func(c *gin.Context) {
 		// 获取请求参数
-		userID := r.URL.Query().Get("user_id")
+		userID := c.Query("user_id")
 		if userID == "" {
-			http.Error(w, "Missing user_id parameter", http.StatusBadRequest)
+			c.JSON(400, gin.H{
+				"msg": "Missing user_id parameter",
+			})
 			return
 		}
 
-		// 模拟查询举报结果（实际项目中需查询数据库）
-		reportList := []ReportResult{
-			{
-				PostID:  2,
-				Content: "1233",
-				Reason:  "123",
-				Status:  0,
-			},
+		// 查询数据库
+		var reports []Reporteds
+		if err := db.Where("user_id = ?", userID).Find(&reports).Error; err != nil {
+			c.JSON(500, Response{
+				Code: 500,
+				Data: gin.H{},
+				Msg:  "数据库查询失败",
+			})
+			return
+		}
+
+		// 转换结果格式
+		reportList := make([]ReportResult, 0)
+		for _, r := range reports {
+			reportList = append(reportList, ReportResult{
+				PostID:  r.PostID,
+				Content: r.Content,
+				Reason:  r.Reason,
+				Status:  r.Status,
+			})
 		}
 
 		// 返回响应
-		resp := Response{
+		c.JSON(200, Response{
 			Code: 200,
 			Data: map[string]interface{}{
 				"report_list": reportList,
 			},
 			Msg: "success",
-		}
-
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(resp)
+		})
 	})
 
 	fmt.Println("Server started at http://localhost:8080")
-	http.ListenAndServe(":8080", nil)
+	r.Run(":8080")
 }
